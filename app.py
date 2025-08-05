@@ -49,13 +49,23 @@ def draw_circle(seconds_left, total_seconds, color):
     img = Image.new("RGBA", (size, size), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
 
+    # Draw background arc
     draw.arc([10, 10, size-10, size-10], start=0, end=360, fill="#cccccc", width=20)
+    # Progress arc
     angle = (seconds_left / total_seconds) * 360
     draw.arc([10, 10, size-10, size-10], start=90, end=90 - angle, fill=color, width=20)
 
     font = ImageFont.truetype(font_path, 100)
     text = str(seconds_left)
-    w, h = draw.textsize(text, font=font)
+
+    # ✅ Use textbbox if available (Pillow >= 10), fallback to textsize for older versions
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
+    except AttributeError:
+        w, h = draw.textsize(text, font=font)
+
     draw.text(((size-w)/2, (size-h)/2), text, font=font, fill="black")
 
     return img
@@ -96,7 +106,7 @@ if st.session_state.running:
         if not st.session_state.running:
             break
 
-        # Exercise
+        # Exercise phase
         st.session_state.phase = "Exercise"
         for sec in range(exercise_time, 0, -1):
             if not st.session_state.running:
@@ -108,7 +118,7 @@ if st.session_state.running:
             placeholder_progress.image(draw_progress_bar(st.session_state.completed_cycles, num_cycles))
             time.sleep(1)
 
-        # Break
+        # Break phase
         if st.session_state.running:
             st.session_state.phase = "Break"
             for sec in range(break_time, 0, -1):
