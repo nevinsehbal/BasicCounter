@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 import base64
 
 # --- Config ---
-font_path = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+font_path = "./Arial Bold.ttf"
 progress_colors = [
     "#FF0000", "#FF3300", "#FF6600", "#FF8000", "#FF9900", "#FFB300",
     "#FFCC00", "#FFD900", "#FFFF00", "#CCFF00", "#99FF00", "#66FF00", "#33FF00"
@@ -16,8 +16,8 @@ st.set_page_config(page_title="Circular Timer", page_icon="⏱", layout="centere
 st.title("🏋️ Exercise / Break Timer")
 
 # --- Sidebar Inputs ---
-exercise_time = st.number_input("Exercise time (seconds)", min_value=3, value=30, step=1)
-break_time = st.number_input("Break time (seconds)", min_value=3, value=10, step=1)
+exercise_time = st.number_input("Exercise time (seconds)", min_value=4, value=30, step=1)
+break_time = st.number_input("Break time (seconds)", min_value=4, value=10, step=1)
 num_cycles = st.number_input("Number of exercise cycles", min_value=1, value=5, step=1)
 
 if "phase" not in st.session_state:
