@@ -100,7 +100,7 @@ if not st.session_state.sound_enabled:
         """
         st.markdown(silent_audio_html, unsafe_allow_html=True)
         st.session_state.sound_enabled = True
-        st.experimental_rerun()
+        st.rerun()
 else:
     # --- Step 2: Normal Start/Stop buttons ---
     col1, col2 = st.columns(2)
