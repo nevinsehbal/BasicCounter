@@ -26,6 +26,8 @@ if "running" not in st.session_state:
     st.session_state.running = False
 if "completed_cycles" not in st.session_state:
     st.session_state.completed_cycles = 0
+if "sound_enabled" not in st.session_state:
+    st.session_state.sound_enabled = False  # New: track sound permission
 
 # --- Audio loader ---
 def load_audio_base64(file_path):
@@ -36,12 +38,13 @@ def load_audio_base64(file_path):
 transition_beep_b64 = load_audio_base64(transition_audio_path)
 
 def play_transition_sound():
-    audio_html = f"""
-    <audio autoplay>
-        <source src="data:audio/mp3;base64,{transition_beep_b64}" type="audio/mp3">
-    </audio>
-    """
-    st.markdown(audio_html, unsafe_allow_html=True)
+    if st.session_state.sound_enabled:
+        audio_html = f"""
+        <audio autoplay>
+            <source src="data:audio/mp3;base64,{transition_beep_b64}" type="audio/mp3">
+        </audio>
+        """
+        st.markdown(audio_html, unsafe_allow_html=True)
 
 # --- Draw circular timer ---
 def draw_circle(seconds_left, total_seconds, color):
@@ -49,16 +52,12 @@ def draw_circle(seconds_left, total_seconds, color):
     img = Image.new("RGBA", (size, size), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
 
-    # Draw background arc
     draw.arc([10, 10, size-10, size-10], start=0, end=360, fill="#cccccc", width=20)
-    # Progress arc
     angle = (seconds_left / total_seconds) * 360
     draw.arc([10, 10, size-10, size-10], start=90, end=90 - angle, fill=color, width=20)
 
     font = ImageFont.truetype(font_path, 100)
     text = str(seconds_left)
-
-    # ✅ Use textbbox if available (Pillow >= 10), fallback to textsize for older versions
     try:
         bbox = draw.textbbox((0, 0), text, font=font)
         w = bbox[2] - bbox[0]
@@ -89,53 +88,67 @@ def draw_progress_bar(current_cycle, total_cycles):
 placeholder_timer = st.empty()
 placeholder_progress = st.empty()
 
-# --- Buttons ---
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("▶ Start"):
-        st.session_state.running = True
-        st.session_state.completed_cycles = 0
-with col2:
-    if st.button("⏹ Stop"):
-        st.session_state.running = False
-        st.session_state.phase = "Ready"
+# --- Step 1: Enable sound before starting ---
+if not st.session_state.sound_enabled:
+    st.markdown("### 🔊 Please tap below to enable sound before starting!")
+    if st.button("✅ Enable Sound"):
+        # Play a silent audio to unlock permissions
+        silent_audio_html = """
+        <audio autoplay>
+            <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=" type="audio/wav">
+        </audio>
+        """
+        st.markdown(silent_audio_html, unsafe_allow_html=True)
+        st.session_state.sound_enabled = True
+        st.experimental_rerun()
+else:
+    # --- Step 2: Normal Start/Stop buttons ---
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("▶ Start"):
+            st.session_state.running = True
+            st.session_state.completed_cycles = 0
+    with col2:
+        if st.button("⏹ Stop"):
+            st.session_state.running = False
+            st.session_state.phase = "Ready"
 
-# --- Main Loop ---
-if st.session_state.running:
-    for cycle in range(num_cycles):
-        if not st.session_state.running:
-            break
-
-        # Exercise phase
-        st.session_state.phase = "Exercise"
-        for sec in range(exercise_time, 0, -1):
+    # --- Step 3: Main Loop ---
+    if st.session_state.running:
+        for cycle in range(num_cycles):
             if not st.session_state.running:
                 break
-            if sec == 4:
-                play_transition_sound()
-            img = draw_circle(sec, exercise_time, "#FF0000")
-            placeholder_timer.image(img)
-            placeholder_progress.image(draw_progress_bar(st.session_state.completed_cycles, num_cycles))
-            time.sleep(1)
 
-        # Break phase
-        if st.session_state.running:
-            st.session_state.phase = "Break"
-            for sec in range(break_time, 0, -1):
+            # Exercise phase
+            st.session_state.phase = "Exercise"
+            for sec in range(exercise_time, 0, -1):
                 if not st.session_state.running:
                     break
                 if sec == 4:
                     play_transition_sound()
-                img = draw_circle(sec, break_time, "#007BFF")
+                img = draw_circle(sec, exercise_time, "#FF0000")
                 placeholder_timer.image(img)
                 placeholder_progress.image(draw_progress_bar(st.session_state.completed_cycles, num_cycles))
                 time.sleep(1)
 
-        st.session_state.completed_cycles += 1
-        placeholder_progress.image(draw_progress_bar(st.session_state.completed_cycles, num_cycles))
+            # Break phase
+            if st.session_state.running:
+                st.session_state.phase = "Break"
+                for sec in range(break_time, 0, -1):
+                    if not st.session_state.running:
+                        break
+                    if sec == 4:
+                        play_transition_sound()
+                    img = draw_circle(sec, break_time, "#007BFF")
+                    placeholder_timer.image(img)
+                    placeholder_progress.image(draw_progress_bar(st.session_state.completed_cycles, num_cycles))
+                    time.sleep(1)
 
-    st.success("✅ All cycles complete!")
-    st.session_state.running = False
-else:
-    placeholder_timer.write(f"Status: **{st.session_state.phase}**")
-    placeholder_progress.image(draw_progress_bar(st.session_state.completed_cycles, num_cycles))
+            st.session_state.completed_cycles += 1
+            placeholder_progress.image(draw_progress_bar(st.session_state.completed_cycles, num_cycles))
+
+        st.success("✅ All cycles complete!")
+        st.session_state.running = False
+    else:
+        placeholder_timer.write(f"Status: **{st.session_state.phase}**")
+        placeholder_progress.image(draw_progress_bar(st.session_state.completed_cycles, num_cycles))
